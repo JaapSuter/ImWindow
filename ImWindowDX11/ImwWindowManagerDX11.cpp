@@ -1,7 +1,7 @@
 #include "ImwWindowManagerDX11.h"
 #include "ImwPlatformWindowDX11.h"
 
-#include <imgui_impl_dx11.h>
+#include "dv/client/ImGuiDx11.h"
 
 using namespace ImWindow;
 

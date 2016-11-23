@@ -2,16 +2,38 @@
 
 #include "ImwWindowManager.h"
 
-#include <DxErr.h>
+// #include <DxErr.h>
 
-#include "Win32MessageHelper.h">
+#include "Win32MessageHelper.h"
 
 #pragma comment (lib, "d3d11.lib")
-#pragma comment (lib, "d3dx11.lib")
-#pragma comment (lib, "d3dx10.lib")
+// #pragma comment (lib, "d3dx11.lib")
+// #pragma comment (lib, "d3dx10.lib")
 #pragma comment (lib, "d3dcompiler.lib")
 #pragma comment (lib, "dxgi.lib")
-#pragma comment (lib, "dxerr.lib")
+// #pragma comment (lib, "dxerr.lib")
+
+static std::wstring GetErrorDescription(DWORD dwErrorCode)
+{
+    wchar_t* szMsgBuffer = nullptr;
+    const auto formatRet = FormatMessage(
+        FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+        nullptr, dwErrorCode, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+        reinterpret_cast<LPTSTR>(&szMsgBuffer), 0, nullptr);
+   
+    if (formatRet <= 0) {
+        if (szMsgBuffer)
+            LocalFree(szMsgBuffer);
+        const auto str = fmt::format("Error Code: {} (could not format to more helpful message.)", dwErrorCode);
+        return std::wstring(str.begin(), str.end());
+    }
+    
+    std::wstring strRet(szMsgBuffer);
+    LocalFree(szMsgBuffer);
+    return strRet;
+}
+
+#define DXGetErrorDescription(PP_err) GetErrorDescription(PP_err).c_str()
 
 using namespace ImWindow;
 
@@ -80,9 +102,9 @@ bool ImwPlatformWindowDX11::Init(ImwPlatformWindow* pMain)
 	AdjustWindowRect(&wr, iWindowStyle, FALSE);
 
 	m_hWnd = CreateWindowEx(NULL,
-		"ImwPlatformWindowDX11",
-		"ImwWindow",
-		iWindowStyle,
+        DV_TOOL_CLIENT_WINDOW_CLASS,
+        DV_TOOL_CLIENT_NAME, 
+        iWindowStyle,
 		300,
 		300,
 		wr.right - wr.left,
@@ -91,6 +113,10 @@ bool ImwPlatformWindowDX11::Init(ImwPlatformWindow* pMain)
 		NULL,
 		GetModuleHandle(NULL),
 		NULL);
+    if (!m_hWnd) {
+        MessageBox(NULL, DXGetErrorDescription(GetLastError()), TEXT("CreateWindowEx"), MB_OK);
+        return false;
+    }
 
 	if (m_bIsDragWindow)
 	{
@@ -122,7 +148,7 @@ bool ImwPlatformWindowDX11::Init(ImwPlatformWindow* pMain)
 
 	if (FAILED(hr))
 	{
-		MessageBox(NULL, DXGetErrorDescription(hr), TEXT("s_pFactory->MakeWindowAssociation"), MB_OK);
+		MessageBox(NULL, GetErrorDescription(hr).c_str(), TEXT("s_pFactory->MakeWindowAssociation"), MB_OK);
 		return false;
 	}
 
@@ -247,7 +273,7 @@ void ImwPlatformWindowDX11::SetWindowMaximized(bool bMaximized)
 
 void ImwPlatformWindowDX11::SetTitle(const ImwChar* pTtile)
 {
-	SetWindowText(m_hWnd, pTtile);
+	SetWindowTextA(m_hWnd, pTtile);
 }
 
 void ImwPlatformWindowDX11::PreUpdate()
@@ -286,7 +312,7 @@ void ImwPlatformWindowDX11::Render()
 
 	if ( NULL != m_pSwapChain )
 	{
-		D3DXCOLOR bgColor(0.4f, 0.4f, 0.4f, 1.0f);
+        const float bgColor[]{ 0.4f, 0.4f, 0.4f, 1.0f };
 
 		s_pDeviceContext->OMSetRenderTargets(1, &m_pRenderTargetView, NULL);
 
@@ -552,9 +578,15 @@ void ImwPlatformWindowDX11::InitWndClassEx()
 		wc.hInstance = GetModuleHandle(NULL);
 		wc.hCursor = LoadCursor(NULL, IDC_ARROW);
 		wc.hbrBackground = (HBRUSH)COLOR_WINDOW;
-		wc.lpszClassName = "ImwPlatformWindowDX11";
+		wc.lpszClassName = DV_TOOL_CLIENT_WINDOW_CLASS;
 
-		RegisterClassEx(&wc);
+		const int ret =
+        RegisterClassEx(&wc);
+
+        if (ret == 0) {
+            MessageBox(NULL, GetErrorDescription(GetLastError()).c_str(), TEXT("RegisterClassEx"), MB_OK);
+            abort();
+        }
 
 		s_bClassInitialized = true;
 	}

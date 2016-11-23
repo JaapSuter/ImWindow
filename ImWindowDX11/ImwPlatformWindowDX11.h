@@ -7,14 +7,14 @@
 
 #include <map>
 
-#include <imgui_impl_dx11.h>
+#include "dv/client/ImGuiDx11.h"
 
 #include <windows.h>
 #include <windowsx.h>
 
 #include <d3d11.h>
-#include <d3dx11.h>
-#include <d3dx10.h>
+// #include <d3dx11.h>
+// #include <d3dx10.h>
 
 namespace ImWindow
 {
@@ -39,7 +39,7 @@ namespace ImWindow
 		virtual void						SetPosition(int iX, int iY);
 		virtual void						SetWindowMaximized(bool bMaximized);
 		virtual void						SetTitle(const ImwChar* pTtile);
-
+        
 		HWND								GetHWnd();
 	protected:
 		virtual void						PreUpdate();
